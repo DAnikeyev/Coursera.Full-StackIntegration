@@ -1,0 +1,80 @@
+@page "/fetchproducts"
+@inject ProductApiClient ProductApiClient
+
+<PageTitle>Product List</PageTitle>
+
+<h1>Product List</h1>
+
+@if (isLoading)
+{
+    <p>Loading products...</p>
+}
+else if (!string.IsNullOrWhiteSpace(errorMessage))
+{
+    <div class="alert alert-danger" role="alert">@errorMessage</div>
+}
+else if (products.Count == 0)
+{
+    <p>No inventory is currently available.</p>
+}
+else
+{
+    @if (loadedFromCache)
+    {
+        <p class="text-muted">Showing cached inventory results to avoid an unnecessary API call.</p>
+    }
+
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Category</th>
+                <th>Price</th>
+                <th>Stock</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var product in products)
+            {
+                <tr>
+                    <td>@product.Name</td>
+                    <td>@product.Category.Name</td>
+                    <td>@product.Price.ToString("C")</td>
+                    <td>@product.Stock</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private IReadOnlyList<Product> products = Array.Empty<Product>();
+    private bool isLoading = true;
+    private bool loadedFromCache;
+    private string? errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var result = await ProductApiClient.GetProductsAsync();
+
+            if (result.HasError)
+            {
+                errorMessage = result.ErrorMessage;
+                return;
+            }
+
+            products = result.Products;
+            loadedFromCache = result.IsFromCache;
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"An unexpected error occurred while loading products: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+}
